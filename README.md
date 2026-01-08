@@ -22,6 +22,10 @@ An AI-powered CV Analyzer that extracts information from your CV and provides pe
 git clone https://github.com/shumail-hassan-khan/Job_recommender.git
 cd Job_recommender
 
+python -m venv venv 
+
+Source venv/Scripts/activate
+
 pip install -r requirements.txt
 
 cd app
