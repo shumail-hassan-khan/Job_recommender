@@ -1,0 +1,11 @@
+agno
+openai
+ddgs
+pypdf
+python-docx
+pytesseract
+Pillow
+python-dotenv
+uvicorn
+fastapi
+python-multipart

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CV Career Advisor</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: "Inter", system-ui, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #0f172a, #020617);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #e5e7eb;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 420px;
+            height: 90vh;
+            background: #020617;
+            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+
+        .header {
+            padding: 14px 16px;
+            background: #020617;
+            border-bottom: 1px solid #1e293b;
+            font-weight: 600;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 14px;
+            overflow-y: auto;
+        }
+
+        .msg {
+            margin-bottom: 14px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            max-width: 90%;
+            line-height: 1.45;
+            font-size: 14px;
+        }
+
+        .bot {
+            background: #020617;
+            border: 1px solid #1e293b;
+        }
+
+        .user {
+            background: #2563eb;
+            margin-left: auto;
+            color: white;
+        }
+
+        .msg h4 {
+            margin: 8px 0 4px;
+            font-size: 13px;
+            color: #93c5fd;
+        }
+
+        .msg ul {
+            padding-left: 18px;
+            margin: 6px 0;
+        }
+
+        .msg a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+
+        .msg a:hover {
+            text-decoration: underline;
+        }
+
+        .input-area {
+            padding: 12px;
+            border-top: 1px solid #1e293b;
+            background: #020617;
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-btn {
+            background: #1e293b;
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .send-btn {
+            flex: 1;
+            background: #2563eb;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .send-btn:disabled {
+            background: #475569;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 480px) {
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="chat-container">
+        <div class="header">📄 CV Career Advisor</div>
+
+        <div class="messages" id="messages">
+            <div class="msg bot">
+                Upload your CV and I’ll analyze it and guide your career 🚀
+            </div>
+        </div>
+
+        <!-- INPUT AREA (upload + chat) -->
+        <div class="input-area">
+            <label class="upload-btn">
+                Upload CV
+                <input type="file" id="cvFile" />
+            </label>
+            <input type="text" id="chatInput" placeholder="Ask about your CV..."
+                style="flex:1;padding:10px;border-radius:10px;border:none;" />
+            <button class="send-btn" id="sendBtn" disabled>Send</button>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById("cvFile");
+        const sendBtn = document.getElementById("sendBtn");
+        const messages = document.getElementById("messages");
+        const chatInput = document.getElementById("chatInput");
+
+        let selectedFile = null;
+        let cvSummary = null; // Store CV analysis for chat context
+
+        fileInput.addEventListener("change", () => {
+            selectedFile = fileInput.files[0];
+            sendBtn.disabled = !selectedFile;
+            sendBtn.innerText = "Analyze";
+        });
+
+        sendBtn.addEventListener("click", async () => {
+            if (selectedFile) {
+                analyzeCV();
+            } else if (chatInput.value.trim()) {
+                sendChat();
+            }
+        });
+
+        async function analyzeCV() {
+            addMessage("CV uploaded. Analyzing...", "user");
+            sendBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            try {
+                const res = await fetch("/analyze-cv", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await res.json();
+                cvSummary = data; // save CV context for chat
+                renderAnalysis(data);
+
+            } catch (err) {
+                addMessage("❌ Failed to analyze CV.", "bot");
+            } finally {
+                selectedFile = null;
+                sendBtn.innerText = "Send";
+                sendBtn.disabled = false;
+            }
+        }
+
+        async function sendChat() {
+            if (!cvSummary) {
+                addMessage("Please upload and analyze your CV first.", "bot");
+                return;
+            }
+
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            addMessage(text, "user");
+            chatInput.value = "";
+
+            try {
+                const res = await fetch("/chat-cv", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        session_id: cvSummary.session_id, // use session_id from /analyze-cv
+                        user_message: text
+                    })
+                });
+
+                const data = await res.json();
+
+                // Handle object replies
+                if (typeof data.reply === "object") {
+                    addMessage(`<pre style="white-space:pre-wrap;">${JSON.stringify(data.reply, null, 2)}</pre>`, "bot");
+                } else {
+                    addMessage(data.reply, "bot");
+                }
+            } catch (err) {
+                addMessage("❌ Failed to send message.", "bot");
+            }
+        }
+
+
+        function addMessage(content, type) {
+            const div = document.createElement("div");
+            div.className = `msg ${type}`;
+            if (typeof content === "object") {
+                div.innerHTML = `<pre style="white-space:pre-wrap;">${JSON.stringify(content, null, 2)}</pre>`;
+            } else {
+                div.innerHTML = content;
+            }
+            messages.appendChild(div);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function renderAnalysis(data) {
+            let html = `
+                <strong>${data.candidate_name}</strong><br/>
+                ${data.current_education} (${data.education_status})<br/>
+                <strong>Graduation Year:</strong> ${data.graduation_year || "N/A"}<br/>
+                <strong>Field of Study:</strong> ${data.field_of_study || "N/A"}<br/><br/>
+
+                <h4>Skills</h4>
+                <ul>${data.skills.map(s => `<li>${s}</li>`).join("")}</ul>
+
+                <h4>Experience</h4>
+                <p>${data.experience_summary || "No experience listed."}</p>
+
+                <h4>Courses</h4>
+                <ul>${data.recommended_courses.map(c =>
+                `<li><a href="${c.url}" target="_blank">${c.name}</a> (${c.platform})</li>`).join("")}</ul>
+
+                <h4>Certifications</h4>
+                <ul>${data.recommended_certifications.map(cert =>
+                    `<li><a href="${cert.url}" target="_blank">${cert.name}</a> – ${cert.provider}</li>`).join("")}</ul>
+
+                <h4>Jobs</h4>
+                <ul>${data.recommended_jobs.map(j =>
+                        `<li><a href="${j.url}" target="_blank">${j.title}</a> – ${j.platform}</li>`).join("")}</ul>
+
+                <h4>Additional Resources</h4>
+                <ul>${data.additional_resources.map(r =>
+                            `<li><a href="${r}" target="_blank">${r}</a></li>`).join("")}</ul>
+
+                <h4>Career Advice</h4>
+                <p>${data.career_advice}</p>
+            `;
+
+            addMessage(html, "bot");
+        }
+
+        // Optional: render full experience when user types "show experience"
+        function renderExperience(data) {
+            renderAnalysis(data); // same structure as renderAnalysis
+        }
+
+    </script>
+
+</body>
+
+
+
+</html>
