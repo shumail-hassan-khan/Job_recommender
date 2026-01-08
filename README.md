@@ -1,20 +1,28 @@
-#create virtual environment first 
-python -m venv venv
+# CV Analyzer API
 
-#activate virtual environment
-Source venv/Scripts/activate
+An AI-powered CV Analyzer that extracts information from your CV and provides personalized career recommendations, including courses, certifications, job links, and career advice. Supports PDF, DOCX, TXT, and image files (PNG/JPG).
 
-#install dependencies
+---
+
+## Features
+
+- Extract text from CVs in multiple formats (PDF, DOCX, TXT, PNG, JPG)
+- Analyze education, skills, and experience
+- Recommend relevant courses and certifications
+- Suggest job opportunities with direct links
+- Provide career advice and master's program recommendations
+- Chat functionality for follow-up questions about your CV
+
+---
+
+## Setup Instructions
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/shumail-hassan-khan/Job_recommender.git
+cd Job_recommender
+
 pip install -r requirements.txt
 
-
-#go to project path 
 cd app
-
-#run your project 
 uvicorn main:app --reload --port 7777
-
-#project will run on this port 
-http://localhost:7777/
-
-
